@@ -1,8 +1,9 @@
 use pulldown_cmark::{Parser , Options};
 use std::fs::{self, File};
 use std::io::{Write};
-use std::path::Path;
-
+use std::path::{Path , PathBuf};
+use actix_web::{post, web, App, HttpResponse, HttpServer};
+use actix_files::NamedFile;
 
 
 fn md_to_html(markdown_input: String) -> String {
@@ -20,13 +21,15 @@ fn md_to_html(markdown_input: String) -> String {
     html_output
 }
 
-fn main() {
+    // let path = Path::new("markdown.md");
+    // let contents = fs::read_to_string(path).unwrap();
+    // println!("{}" , contents);
     
-    let path = Path::new("markdown.md");
-    let contents = fs::read_to_string(path).unwrap();
-    println!("{}" , contents);
-    
-    let html = md_to_html(contents);
+   
+#[post("/")]
+async fn convert_to_html(body : web::Bytes) -> Result<NamedFile, std::io::Error>{
+    let contents = String::from_utf8_lossy(&body);
+     let html = md_to_html(contents.into_owned());
     
     let path = Path::new("parsed.html");
 
@@ -39,5 +42,21 @@ fn main() {
         Ok(_) => println!("successfully created file"),
         Err(e) => panic!("Error {}", e)
     }
+ 
+    let pathbuf : PathBuf = "./parsed.html".parse().unwrap();
+    Ok(NamedFile::open(pathbuf)?)
+}
+
+#[actix_web::main]
+async fn main() -> std::io::Result<()> {
+    
+    HttpServer::new(move ||{
+            App::new()
+                .service(convert_to_html)   
+        }
+    )
+    .bind(("127.0.0.1" , 8080))?
+    .run()
+    .await
 
 }
