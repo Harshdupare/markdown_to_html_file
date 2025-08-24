@@ -1,29 +1,181 @@
-<h1>Sample Markdown</h1>
-<p>This is some basic, sample markdown.</p>
-<h2>Second Heading</h2>
-<ul>
-<li>Unordered lists, and:</li>
-</ul>
-<ol>
-<li>One</li>
-<li>Two</li>
-<li>Three</li>
-</ol>
-<ul>
-<li>More</li>
-</ul>
-<blockquote>
-<p>Blockquote</p>
-</blockquote>
-<p>And <strong>bold</strong>, <em>italics</em>, and even <em>italics and later <strong>bold</strong></em>. Even <del>strikethrough</del>. <a href="https://markdowntohtml.com">A link</a> to somewhere.</p>
-<p>And code highlighting:</p>
-<pre><code class="language-js">var foo = 'bar';
+<h1>Comprehensive Flowchart — School ERP (Next.js + Supabase/Firebase Stack)</h1>
+<p>Below is a clear, comprehensive flowchart of the entire system. It maps user roles to core modules, data flows, external integrations, and notification paths. Use this as the single-source diagram for architecture, feature planning, and implementation order.</p>
+<hr />
+<pre><code class="language-mermaid">flowchart LR
+  %% Authentication &amp; Entry
+  subgraph AUTH[Authentication &amp; Onboarding]
+    A1((User Signup / Login))
+    A2[Role Assignment: Admin / Teacher / Student / Parent]
+    A3[Profile Management (Cloudinary avatar)]
+  end
+  A1 --&gt; A2
+  A2 --&gt; A3
 
-function baz(s) {
-   return foo + ':' + s;
-}
+  %% Dashboards
+  subgraph DASH[Role Dashboards]
+    ADM[Admin Dashboard]
+    TCH[Teacher Dashboard]
+    STP[Student/Parent Dashboard]
+  end
+  A2 --&gt; ADM
+  A2 --&gt; TCH
+  A2 --&gt; STP
+
+  %% Admin Modules
+  subgraph ADMINMODULES[Admin Modules]
+    ENR[Enrollment / CSV Import &amp; QR gen]
+    TIM[Timetable Management]
+    FEE[Fees &amp; Accounts]
+    REP[Reports &amp; Analytics]
+    CFG[System Configuration (roles, permissions, settings)]
+    DOCS[Certificates &amp; Documents (PDF gen)]
+    LIB[Library Management]
+    TRANS[Transport &amp; Routes]
+    EVENTS[Events &amp; Calendar]
+    GRV[Grievance Management]
+  end
+  ADM --&gt; ADMINMODULES
+
+  %% Teacher Modules
+  subgraph TEACHERMODS[Teacher Modules]
+    ATT[Attendance: Manual / QR]
+    MARK[Marks &amp; Gradebook]
+    HW[Assignments / Homework]
+    RESRC[Study Materials Upload (Cloudinary)]
+    COMM[Class Communication / Chat]
+    NOTT[Trigger Notifications]
+  end
+  TCH --&gt; TEACHERMODS
+
+  %% Student/Parent Modules
+  subgraph STUDPARENTS[Student / Parent Modules]
+    VIEW_ATT[View Attendance]
+    VIEW_MARKS[View Results &amp; Report Cards]
+    SUB_HW[Submit Assignments]
+    PAY_FEE[Pay Fees / View Receipts]
+    NOT_VIEW[Notifications Center]
+    GRV_VIEW[Raise/View Grievance]
+  end
+  STP --&gt; STUDPARENTS
+
+  %% Shared Services
+  subgraph SHARED[Shared Services &amp; Integrations]
+    DB[(Supabase / Firestore DB)]
+    STORAGE[(Cloudinary / Storage)]
+    AUTHSRV[(Stack-Auth / Supabase Auth)]
+    FCM[(Firebase Cloud Messaging)]
+    SMTP[(Email/SMS Gateway)]
+    CAL[(Google Calendar Sync)]
+    PAYMENT[(Razorpay / Payment Gateway)]
+    REALTIME[(Realtime - Supabase Realtime / WebSockets)]
+    EXPORT[(PDF/Excel Export Libs)]
+  end
+
+  %% Data flows from modules to shared services
+  ADMINMODULES --&gt; DB
+  TEACHERMODS --&gt; DB
+  STUDPARENTS --&gt; DB
+  RESRC --&gt; STORAGE
+  DOCS --&gt; EXPORT
+  TIM --&gt; CAL
+  FEE --&gt; PAYMENT
+  NOTT --&gt; FCM
+  NOTT --&gt; SMTP
+  COMM --&gt; REALTIME
+
+  %% Example process flows
+  %% Attendance flow
+  TCH --&gt; ATT --&gt;|Writes attendance| DB
+  DB --&gt;|Trigger rule| NOTT
+  NOTT --&gt; FCM
+  NOTT --&gt; SMTP
+  FCM --&gt; STP
+  SMTP --&gt; STP
+  ATT --&gt; REP
+
+  %% Marks and Results flow
+  TCH --&gt; MARK --&gt; DB
+  DB --&gt;|Compute grade/term report| REP
+  DB --&gt;|Trigger report notification| NOTT
+  NOTT --&gt; STP
+  REP --&gt; STP
+
+  %% Assignments flow
+  TCH --&gt; HW --&gt; RESRC
+  RESRC --&gt; STORAGE
+  HW --&gt; DB
+  STP --&gt; SUB_HW --&gt; DB
+  SUB_HW --&gt; TCH
+  SUB_HW --&gt; NOTT
+
+  %% Fee flow
+  STP --&gt; PAY_FEE --&gt; PAYMENT
+  PAYMENT --&gt;|webhook| DB
+  DB --&gt;|update ledger| FEE
+  FEE --&gt; NOTT
+  NOTT --&gt; STP
+
+  %% Grievance flow
+  STP --&gt; GRV_VIEW --&gt; DB
+  DB --&gt; GRV
+  GRV --&gt; ADMSOL[Admin Review &amp; Resolution]
+  ADMSOL --&gt;|Resolve / Escalate| DB
+  DB --&gt; NOTT
+  NOTT --&gt; STP
+
+  %% Enrollment &amp; Onboarding
+  ADM --&gt; ENR --&gt; DB
+  ENR --&gt; QR[Generate QR / Student ID]
+  QR --&gt; STORAGE
+
+  %% Library &amp; Transport
+  ADMINMODULES --&gt; LIB --&gt; DB
+  ADMINMODULES --&gt; TRANS --&gt; DB
+  TRANS --&gt; MAP[Optional: Maps API]
+  MAP --&gt;|Limited free| ADMINMODULES
+
+  %% Reports &amp; Analytics path
+  REP --&gt;|dashboards| ADM
+  REP --&gt;|download| EXPORT
+
+  %% System config and security
+  CFG --&gt; AUTHSRV
+  AUTHSRV --&gt; A1
+  AUTHSRV --&gt; DB
+  AUTHSRV --&gt; REALTIME
+
+  %% Backups &amp; Exports
+  DB --&gt; EXPORT
+  STORAGE --&gt; EXPORT
+
+  %% Visual grouping
+  classDef role fill:#e8f0ff,stroke:#2b6cb0;
+  class ADM,TCH,STP role;
+  classDef services fill:#f0fff4,stroke:#38a169;
+  class SHARED services;
+
+  %% Legend
+  subgraph LEGEND[ ]
+    direction TB
+    note[[Legend:\n• Rounded: actions/modules\n• Rectangles: services\n• DB: single source of truth\n• Notifications: in-app + push + email/SMS]]
+  end
+
 </code></pre>
-<p>Or inline code like <code>var foo = 'bar';</code>.</p>
-<p>Or an image of bears</p>
-<p><img src="http://placebear.com/200/200" alt="bears" /></p>
-<p>The end ...</p>
+<hr />
+<h2>Notes for implementation &amp; layout</h2>
+<ol>
+<li><strong>Entry points &amp; roles</strong> — keep a single entry (Auth) and route users to role-specific dashboards in Next.js using middleware for server-side role checks.</li>
+<li><strong>Realtime &amp; triggers</strong> — use Supabase Realtime or Firestore triggers to push notifications and update analytics pipelines.</li>
+<li><strong>Storage</strong> — store images, PDFs, and assignment files in Cloudinary (free tier) or Supabase Storage.</li>
+<li><strong>Notifications</strong> — use Firebase Cloud Messaging for push; SMTP / transactional email provider for emails; use cheap SMS only when necessary.</li>
+<li><strong>Offline / Mobile</strong> — Next.js + PWA approach for offline-read on student dashboards for schedules and assignments.</li>
+<li><strong>Zero-cost hosting</strong> — Vercel free tier for Next.js, Supabase free tier for backend; Cloudinary free-tier for media.</li>
+</ol>
+<hr />
+<p>If you want, I can:</p>
+<ul>
+<li>Produce a <strong>PNG / SVG export</strong> of this diagram, sized for printing.</li>
+<li>Break this big flowchart into <strong>role-specific smaller diagrams</strong> (e.g., detailed Teacher workflow, detailed Fees workflow).</li>
+<li>Convert this into a <strong>task roadmap</strong> (epics → stories → implementation order).</li>
+</ul>
+<p>Tell me which next step you want and I will update the diagram accordingly.</p>
